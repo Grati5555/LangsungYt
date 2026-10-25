@@ -1,5 +1,5 @@
 #EXTM3U
-#EXTINF:-1 group-title="YouTube Live",🟢 Ar-Raudhah TV Official
-https://ytproxy.up.railway.app/live/@ArRaudhahTVOfficial
-#EXTINF:-1 group-title="YouTube Live",🟢 SNTV Official Telecast
-https://ytproxy.up.railway.app/live/@SNTVOfficialTelecast
+#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Live",🟢 [LIVE] ArRaudhahTVOfficial
+https://www.youtube.com/@ArRaudhahTVOfficial/live
+#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Live",🟢 [LIVE] SNTVOfficialTelecast
+https://www.youtube.com/@SNTVOfficialTelecast/live
