@@ -6,19 +6,35 @@ OUTPUT_M3U = "langsungYtb.m3u"
 
 def get_stream_url(youtube_url):
     try:
-        # Menggunakan yt-dlp untuk langsung ekstrak URL stream m3u8/manifest
+        # Menggunakan argumen --print untuk menarik langsung URL video live aktif dari halaman channel/streams
         command = [
             "yt-dlp",
-            "-g",
+            "--print",
+            "url",
+            "--playlist-items",
+            "1",
             "--no-warnings",
             youtube_url
         ]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=25)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
-            urls = result.stdout.strip().split('\n')
-            for url in urls:
-                if url.startswith("http"):
-                    return url.strip()
+            output_lines = result.stdout.strip().split('\n')
+            for line in output_lines:
+                if line.startswith("http"):
+                    # Ambil link video tersebut lalu ekstrak link m3u8 langsungnya
+                    video_url = line.strip()
+                    cmd_stream = [
+                        "yt-dlp",
+                        "-g",
+                        "--no-warnings",
+                        video_url
+                    ]
+                    res_stream = subprocess.run(cmd_stream, capture_output=True, text=True, timeout=20)
+                    if res_stream.returncode == 0:
+                        streams = res_stream.stdout.strip().split('\n')
+                        for s in streams:
+                            if s.startswith("http"):
+                                return s.strip()
         return None
     except Exception as e:
         print(f"Error fetching {youtube_url}: {e}")
@@ -38,17 +54,16 @@ def generate_m3u():
         print(f"Memeriksa: {channel_url}")
         stream_url = get_stream_url(channel_url)
         
-        # Ambil nama channel yang bersih untuk judul
-        clean_name = channel_url.split("@")[-1].replace("/live", "").replace("/", "")
+        # Membersihkan nama channel untuk judul di aplikasi IPTV
+        clean_name = channel_url.split("@")[-1].replace("/streams", "").replace("/live", "").replace("/", "")
         
         if stream_url:
             m3u_content += f'#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Live",🟢 [LIVE] {clean_name}\n'
             m3u_content += f'{stream_url}\n'
             print(f"-> Status: LIVE Ditemukan!")
         else:
-            # Jika offline, arahkan ke link channel aslinya atau placeholder khusus
             m3u_content += f'#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Offline",🔴 [OFFLINE] {clean_name}\n'
-            m3u_content += f'{channel_url}\n'
+            m3u_content += f'{channel_url.replace("/streams", "/live")}\n'
             print(f"-> Status: OFFLINE")
 
     with open(OUTPUT_M3U, "w") as f:
