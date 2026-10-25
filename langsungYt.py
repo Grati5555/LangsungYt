@@ -1,61 +1,50 @@
-import subprocess
+import urllib.request
+import json
 import os
 
-CHANNELS_FILE = "channels.txt"
+# Nama file output M3U sesuai permintaan Anda
 OUTPUT_M3U = "langsungYtb.m3u"
 
-def get_stream_url(youtube_url):
-    try:
-        # Perintah yt-dlp paling bersih dan langsung untuk mendeteksi serta mengambil link .m3u8 live
-        command = [
-            "yt-dlp",
-            "-g",
-            "--no-warnings",
-            "--prefer-free-formats",
-            youtube_url
-        ]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=25)
-        if result.returncode == 0:
-            urls = result.stdout.strip().split('\n')
-            for url in urls:
-                if url.startswith("http"):
-                    return url.strip()
-        return None
-    except Exception as e:
-        print(f"Error fetching {youtube_url}: {e}")
-        return None
+# Daftar Channel YouTube via Handle
+CHANNEL_HANDLES = [
+    "@ArRaudhahTVOfficial",
+    "@SNTVOfficialTelecast"
+]
 
-def generate_m3u():
-    if not os.path.exists(CHANNELS_FILE):
-        print(f"File {CHANNELS_FILE} tidak ditemukan.")
-        return
-
-    with open(CHANNELS_FILE, "r") as f:
-        channels = [line.strip() for line in f if line.strip() and not line.startswith("#")]
-
+def generate_playlist():
     m3u_content = '#EXTM3U\n'
     
-    for channel_url in channels:
-        print(f"Memeriksa: {channel_url}")
-        stream_url = get_stream_url(channel_url)
-        
-        # Mengambil nama bersih channel
-        clean_name = channel_url.split("@")[-1].replace("/live", "").replace("/streams", "").replace("/", "")
-        
-        if stream_url:
-            # Jika sedang LIVE, masukkan link direct stream .m3u8
-            m3u_content += f'#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Live",🟢 [LIVE] {clean_name}\n'
-            m3u_content += f'{stream_url}\n'
-            print(f"-> Status: LIVE Ditemukan!")
-        else:
-            # Jika OFFLINE, arahkan kembali ke link channel aslinya
+    for handle in CHANNEL_HANDLES:
+        print(f"Mengecek channel: {handle}")
+        clean_name = handle.replace("@", "")
+        try:
+            # Mengambil halaman channel publik untuk mendeteksi apakah sedang live
+            url = f"https://www.youtube.com/{handle}/live"
+            req = urllib.request.Request(
+                url, 
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+            )
+            
+            with urllib.request.urlopen(req, timeout=15) as response:
+                html = response.read().decode('utf-8')
+                
+                # Cek apakah string 'isLive' atau indikator live lainnya ada di source code halaman
+                if '"isLive":true' in html or 'hlstrm' in html or 'broadcast_id' in html:
+                    m3u_content += f'#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Live",🟢 [LIVE] {clean_name}\n'
+                    m3u_content += f'https://www.youtube.com/{handle}/live\n'
+                    print(f"-> Status: LIVE terdeteksi untuk {handle}")
+                else:
+                    m3u_content += f'#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Offline",🔴 [OFFLINE] {clean_name}\n'
+                    m3u_content += f'https://www.youtube.com/{handle}/live\n'
+                    print(f"-> Status: OFFLINE")
+        except Exception as e:
+            print(f"Error pada {handle}: {e}")
             m3u_content += f'#EXTINF:-1 tvg-id="" tvg-logo="" group-title="YouTube Offline",🔴 [OFFLINE] {clean_name}\n'
-            m3u_content += f'https://www.youtube.com/@{clean_name}/live\n'
-            print(f"-> Status: OFFLINE")
+            m3u_content += f'https://www.youtube.com/{handle}/live\n'
 
-    with open(OUTPUT_M3U, "w") as f:
+    with open(OUTPUT_M3U, "w", encoding="utf-8") as f:
         f.write(m3u_content)
-    print("Playlist langsungYtb.m3u berhasil diperbarui!")
+    print(f"File {OUTPUT_M3U} berhasil diperbarui!")
 
 if __name__ == "__main__":
-    generate_m3u()
+    generate_playlist()
